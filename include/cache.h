@@ -16,10 +16,9 @@ public:
     CacheBlock(uint64_t tag) {}
 };
 
-class CacheStatistics
+struct CacheStatistics
 {
-public:
-    uint n_reads = 0;
+    uint n_reads = 0; 
     uint n_read_misses = 0;
     uint n_writes = 0;
     uint n_write_misses = 0;
@@ -117,15 +116,27 @@ public:
      * 
      *    - int = index of cache block found in corresponding cache set
     */
-    pair<bool, CacheBlock> writeBlock(uint64_t addr);
+    pair<bool, pair<int,CacheBlock>> writeBlock(uint64_t addr);
 
 
-    void swapBlocks();
+    /**
+     * @brief Swapping blocks between L1 and its victim cache(VC)
+     * 
+     * @param l1_set_num set number of L1 cache_block
+     * @param l1_idx index of L1 cache_block in cache_set `l1_set_num`
+     * @param vc_idx index of VC cache_block in set 0 (since VC is fully associative)
+     */
+    void swapBlocks(int l1_set_num, int l1_idx, int vc_idx);
 
     /*
      * @brief prints the cache_blocks within each cache_set in the order of their recency of access (i.e. lru block at the last)
      */
     void printCacheContents();
+
+    /**
+     * @brief Returns Cache Simulation Statistics
+     */
+    CacheStatistics getCacheStatistics();
 };
 
 #endif
