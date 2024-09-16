@@ -11,7 +11,7 @@ public:
     uint64_t tag;
     bool valid_bit;
     bool dirty_bit;
-    int lru_counter;
+    uint lru_counter;
 
     CacheBlock(uint64_t tag) {}
 };
@@ -25,11 +25,12 @@ struct CacheStatistics
     uint n_swap_requests = 0;
     uint n_swaps = 0;       // between L1, VC
     uint n_writebacks = 0;  // # of writebacks from Li or its VC(if enabled) to next level
-    double hitTime;
-    double energy;
-    double area;
-
+    double hitTime = 0;
+    double energy = 0;
+    double area = 0;
     CacheStatistics* vc_statistics;
+
+    CacheStatistics() {vc_statistics = new CacheStatistics();}
 };
 
 /**
@@ -38,15 +39,17 @@ struct CacheStatistics
 class Cache
 {
 private:
-    uint block_size;
-    uint assoc;
     uint cache_size;
+    uint assoc;
+    uint block_size;
     uint n_sets;
+
     bool isVCEnabled;
     uint n_vc_blocks;
-    int n_setBits;
-    int n_indexBits;
-    int n_tagBits;
+
+    uint n_tagBits;
+    uint n_indexBits;
+    uint n_blockOffsetBits;
 
     Cache* vc_cache; 
     vector<vector<CacheBlock>> cache;      
@@ -58,6 +61,14 @@ private:
      * @return Index of LRU block in the given set of set-associative cache.
      */
     int findLRUBlock(int set_num);
+
+    /*
+     * @brief Increments the lru counters of all valid cache_blocks in the cache_set (except one valid block)
+     * 
+     * @param set_num set number of cache_set 
+     * @param idx index of cache_block in cache_set `set_num` for which LRU counter is not incremented
+     */
+    void incrementLRUCounters(int set_num, int idx);
 
     int getSetNumber(uint64_t addr);
     uint64_t getTag(uint64_t addr);
@@ -71,8 +82,10 @@ private:
      * @return LRU cache block that's evicted from the cache
      */
     CacheBlock evictAndReplaceBlock(CacheBlock incoming_cache_block, int set_num, int idx);
+
 public:
     Cache() {};
+
     /*
      * @param n_vc_blocks number of victim cache blocks (If 0 => Victim Cache is disabled)
      */
@@ -86,7 +99,7 @@ public:
      */
     pair<bool, int> lookupBlock(uint64_t tag);      
 
-    /** 
+    /* 
      *  @return 
      *  1. When returned bool=false(read - miss):
      * 
@@ -102,7 +115,7 @@ public:
     */
     pair<bool, pair<int,CacheBlock>> readBlock(uint64_t addr);
 
-    /** 
+    /* 
      *  @return 
      *  1. When returned bool=false(write miss):
      * 
@@ -119,7 +132,7 @@ public:
     pair<bool, pair<int,CacheBlock>> writeBlock(uint64_t addr);
 
 
-    /**
+    /*
      * @brief Swapping blocks between L1 and its victim cache(VC)
      * 
      * @param l1_set_num set number of L1 cache_block
@@ -133,7 +146,7 @@ public:
      */
     void printCacheContents();
 
-    /**
+    /*
      * @brief Returns Cache Simulation Statistics
      */
     CacheStatistics getCacheStatistics();

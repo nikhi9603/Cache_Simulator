@@ -4,6 +4,7 @@
 #include<iostream>
 #include<vector>
 #include "cache.h"
+#include "trace.h"
 using namespace std;
 
 
@@ -63,7 +64,7 @@ public:
     CacheSimulator(uint l1_size, uint l1_assoc, uint l1_blocksize,
                    uint n_vc_blocks,
                    uint l2_size, uint l2_assoc,
-                   vector<pair<string, uint64_t>> trace_contents) {}
+                   vector<TraceEntry> trace_contents) {}
 
     /**
      * @return Simulation statistics

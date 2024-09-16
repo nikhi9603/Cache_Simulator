@@ -7,16 +7,25 @@
 #include<fstream>
 using namespace std;
 
+struct TraceEntry
+{
+    string operation;
+    uint64_t addr;
+
+    TraceEntry(string op, uint64_t addr) {operation = op; this->addr = addr;}
+};
+
+
 class Trace
 {
 private:
     string traceFileName;
     uint n_trace_contents;
-    vector<pair<string, uint64_t>> trace_contents;
-
+    vector<TraceEntry> trace_contents;
+    vector<TraceEntry> parseTraceFile();
 public:
     Trace(string fileName) {}
-    vector<pair<string, uint64_t>> parseTraceFile();
+    vector<TraceEntry> getTraceContents() {return trace_contents;}
 };
 
 #endif
