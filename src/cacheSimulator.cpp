@@ -68,7 +68,7 @@ CacheSimulator::CacheSimulator(uint l1_size, uint l1_assoc, uint l1_blocksize,
 
     // Simulating by sending requests and finding stats;
     sendRequests(trace_contents);
-    simulation_stats = findSimulationStats();
+    simulation_stats = getSimulationStats();
 }
 
 
@@ -313,4 +313,24 @@ RawStatistics CacheSimulator::findRawStatistics()
     {
         raw_stats.total_memory_traffic = raw_stats.l1_read_misses + raw_stats.l1_write_misses - raw_stats.n_swaps + raw_stats.l1_writebacks;
     }
+    return raw_stats;
+}
+
+
+PerformanceStatistics CacheSimulator::findPerformanceStats()
+{
+    PerformanceStatistics perf_stats;
+    perf_stats.average_access_time = findAAT();
+    perf_stats.energy_delay_product = findEDP();
+    perf_stats.area_metric = findArea();
+    return perf_stats;
+}
+
+
+SimulationStatistics CacheSimulator::getSimulationStats()
+{
+    SimulationStatistics simulation_stats;
+    simulation_stats.raw_stats = findRawStatistics();
+    simulation_stats.perf_stats = findPerformanceStats();
+    return simulation_stats;
 }

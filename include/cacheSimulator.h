@@ -64,11 +64,11 @@ private:
     void sendReadRequest(uint64_t addr);
     void sendWriteRequest(uint64_t addr);
 
-    SimulationStatistics findSimulationStats();
     RawStatistics findRawStatistics();
-    void findAAT();
-    void findEDP();
-    void findArea();
+    PerformanceStatistics findPerformanceStats();
+    float findAAT() {return 0;}
+    float findEDP() {return 0;}
+    float findArea() {return 0;}
 public:
     CacheSimulator(uint l1_size, uint l1_assoc, uint l1_blocksize,
                    uint n_vc_blocks,
@@ -78,7 +78,7 @@ public:
     /**
      * @return Simulation statistics
      */
-    SimulationStatistics getSimulationStats() {return simulation_stats;}
+    SimulationStatistics getSimulationStats();
 
     void printSimulationStats() { simulation_stats.printStats(); }
 };
