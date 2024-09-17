@@ -59,14 +59,13 @@ private:
     bool isL2Exist;
     uint l1_size, l1_assoc, l1_blocksize, n_vc_blocks, l2_size, l2_assoc;
     SimulationStatistics simulation_stats;
-    CacheStatistics l1_stats, l2_stats;
 
     void sendRequests(vector<TraceEntry> trace_contents);
     void sendReadRequest(uint64_t addr);
     void sendWriteRequest(uint64_t addr);
 
     SimulationStatistics findSimulationStats();
-    void findRawStatistics();
+    RawStatistics findRawStatistics();
     void findAAT();
     void findEDP();
     void findArea();
