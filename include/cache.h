@@ -25,9 +25,9 @@ struct CacheStatistics
     uint n_swap_requests = 0;
     uint n_swaps = 0;       // between L1, VC
     uint n_writebacks = 0;  // # of writebacks from Li or its VC(if enabled) to next level
-    double hitTime = 0;
-    double energy = 0;
-    double area = 0;
+    float hitTime = 0;
+    float energy = 0;
+    float area = 0;
     CacheStatistics* vc_statistics;
 
     CacheStatistics() {vc_statistics = new CacheStatistics();}
@@ -57,32 +57,42 @@ private:
     CacheStatistics c_stats;
 
     /*
-     * @param set_num  set number in which LRU block has to be found
-     * @return Index of LRU block in the given set of set-associative cache.
+     * @brief Finds LRU Block or Invalid block in the cache_set
+     * @param set_num  set number in which LRU/invalid block has to be found
+     * @return 
+     * - If there exits an `invalid` block, then it returns index of invalid cache block
+     * 
+     * - Else LRU block index
      */
     int findLRUBlock(int set_num);
 
     /*
-     * @brief Increments the lru counters of all valid cache_blocks in the cache_set (except one valid block)
+     * @brief Increments the lru counters of all `valid` cache_blocks in the cache_set
      * 
      * @param set_num set number of cache_set 
-     * @param idx index of cache_block in cache_set `set_num` for which LRU counter is not incremented
      */
-    void incrementLRUCounters(int set_num, int idx);
+    void incrementLRUCounters(int set_num);
 
-    int getSetNumber(uint64_t addr);
-    uint64_t getTag(uint64_t addr);
+    int getSetNumber(uint64_t addr) {};
+    uint64_t getTag(uint64_t addr) {};
 
     /*
-     * @brief Evicts the LRU block to place new_block in that cache_set
+     * @brief Evicts the LRU/invalid block to place new_block in the cache_set.  
+        
+        (LRU counters are not incremented)
      * 
-     * @param incoming_cache_block new block which needs to replace LRU block
-     * @param set_num set number for which lru eviction and replacement happens in that set of the cache
-     * @param idx index of LRU block in the cache_set if known else give -1
-     * @return LRU cache block that's evicted from the cache
+     * - If there exists an `invalid` block in the cache_set, it considers to replace with invalid block. 
+     * 
+     * - Else lru block.
+     * 
+     * @param incoming_cache_block new block which needs to replace LRU/invalid block
+     * @param set_num set number in which replacement happens
+     * @param idx index of LRU/invalid block in the cache_set if known else give -1
+     * @return LRU/Invalid cache block that's evicted from the cache
      */
-    CacheBlock evictAndReplaceBlock(CacheBlock incoming_cache_block, int set_num, int idx);
+    CacheBlock evictAndReplaceBlock(CacheBlock incoming_cache_block, int set_num, int lru_idx);
 
+    void findCactiCacheStatistics();
 public:
     Cache() {};
 
@@ -92,20 +102,20 @@ public:
     Cache(int cache_size, int assoc, int block_size, int n_vc_blocks) {}
 
     /*
+     * @return
+     *   - When returned bool=true(lookup - hit), int=index of block found in cache_set with same tag
      * @return 
-     *   - When returned bool=false(lookup - miss), int=index of LRU block in cache_set
-     *  @return
-     *   - When returned bool=true(lookup -hit), int=index of block found in cache_set with same tag
+     *   - When returned bool=false(lookup - miss), int=index of `invalid block` if exists, else `lru block` index
      */
-    pair<bool, int> lookupBlock(uint64_t tag);      
+    pair<bool, int> lookupBlock(int set_num, uint64_t tag);      
 
-    /* 
+    /*  @brief Reads the block at given addr (For the sake of simulation, we are not considering data in the blocks)
      *  @return 
      *  1. When returned bool=false(read - miss):
      * 
-     *          - CacheBlock = LRU cache block in corresponding cache set (that's evicted) 
+     *          - CacheBlock = LRU/Invalid cache block in corresponding cache set (that's evicted) 
      * 
-     *          - int = -1(as it is deleted now)
+     *          - int = previous index of LRU/invalid cache block that's evicted.
      * 
      *  2. When returned bool=true(read - hit):
      *    
@@ -116,10 +126,11 @@ public:
     pair<bool, pair<int,CacheBlock>> readBlock(uint64_t addr);
 
     /* 
+     *  @brief Writes data to the block at given addr (For the sake of simulation, we are not considering data in the block)
      *  @return 
      *  1. When returned bool=false(write miss):
      * 
-     *          - CacheBlock = LRU cache block in corresponding cache set (that's evicted) 
+     *          - CacheBlock = LRU/Invalid cache block in corresponding cache set (that's evicted) 
      * 
      *          - int = -1(as it is deleted now)
      * 
@@ -149,7 +160,7 @@ public:
     /*
      * @brief Returns Cache Simulation Statistics
      */
-    CacheStatistics getCacheStatistics();
+    CacheStatistics getCacheStatistics() {return c_stats;}
 };
 
 #endif

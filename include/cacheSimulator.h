@@ -29,7 +29,6 @@ struct RawStatistics
 
     double total_memory_traffic;
 
-    void printStats();
 };
 
 
@@ -70,6 +69,8 @@ public:
      * @return Simulation statistics
      */
     SimulationStatistics getSimulationStats() {return simulation_stats;}
+
+    void printRawSimulationStatistics();
 };
 
 #endif
