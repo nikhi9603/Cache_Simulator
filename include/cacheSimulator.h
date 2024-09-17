@@ -15,29 +15,38 @@ struct RawStatistics
     uint l1_writes;
     uint l1_write_misses;
     uint n_swap_requests;   // btw L1, VC
-    double swap_request_rate;
+    float swap_request_rate;
     uint n_swaps;       // between L1, VC
-    double l1_vc_miss_rate;   // combined L1+VC miss rate
-    uint l1_writebacks;  // # of writebacks from L1 or its VC(if enabled) to next level
+    float l1_vc_miss_rate;   // combined L1+VC miss rate
+    uint l1_writebacks;  // number of writebacks from L1 or its VC(if enabled) to next level
     
     uint l2_reads; 
     uint l2_read_misses;
     uint l2_writes;
     uint l2_write_misses; 
-    double l2_miss_rate;   
+    float l2_miss_rate;   
     uint l2_wriebacks;
 
-    double total_memory_traffic;
+    float total_memory_traffic;
 
+    void printStats();
 };
 
+struct PerformanceStatistics
+{
+    float average_access_time;
+    float energy_delay_product;
+    float area_metric;
+
+    void printStats();
+};
 
 struct SimulationStatistics
 {
     RawStatistics raw_stats;
-    double average_access_time;
-    double energy_delay_product;
-    double area_metric;
+    PerformanceStatistics perf_stats;
+
+    void printStats() {raw_stats.printStats(); perf_stats.printStats();}
 };
 
 
@@ -52,9 +61,11 @@ private:
     SimulationStatistics simulation_stats;
     CacheStatistics l1_stats, l2_stats;
 
-    void sendRequests(vector<pair<string, uint64_t>> trace_contents);
+    void sendRequests(vector<TraceEntry> trace_contents);
     void sendReadRequest(uint64_t addr);
     void sendWriteRequest(uint64_t addr);
+
+    SimulationStatistics findSimulationStats();
     void findRawStatistics();
     void findAAT();
     void findEDP();
@@ -70,7 +81,7 @@ public:
      */
     SimulationStatistics getSimulationStats() {return simulation_stats;}
 
-    void printRawSimulationStatistics();
+    void printSimulationStats() { simulation_stats.printStats(); }
 };
 
 #endif

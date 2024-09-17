@@ -50,7 +50,6 @@ Cache::Cache(int cache_size, int assoc, int block_size, int n_vc_blocks)
     }
 
     cache = vector<vector<CacheBlock>> (n_sets, vector<CacheBlock>(assoc, CacheBlock(0)));
-    c_stats = CacheStatistics();
     findCactiCacheStatistics();
 }
 
@@ -64,7 +63,6 @@ Cache::Cache()
     isVCEnabled = false;
     n_vc_blocks = 0;
     vc_cache = nullptr; 
-    c_stats = CacheStatistics();
 }
 
 
