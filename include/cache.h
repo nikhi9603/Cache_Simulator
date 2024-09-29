@@ -11,27 +11,27 @@ public:
     uint64_t tag;
     bool valid_bit;
     bool dirty_bit;
-    uint lru_counter;
+    int lru_counter;
 
-    CacheBlock() {}
-    CacheBlock(uint64_t tag) {}
+    CacheBlock();
+    CacheBlock(uint64_t tag);
 };
 
 struct CacheStatistics
 {
-    uint n_reads = 0; 
-    uint n_read_misses = 0;
-    uint n_writes = 0;
-    uint n_write_misses = 0;
-    uint n_swap_requests = 0;
-    uint n_swaps = 0;       // between L1, VC
-    uint n_writebacks = 0;  // # of writebacks from Li or its VC(if enabled) to next level
+    int n_reads = 0; 
+    int n_read_misses = 0;
+    int n_writes = 0;
+    int n_write_misses = 0;
+    int n_swap_requests = 0;
+    int n_swaps = 0;       // between L1, VC
+    int n_writebacks = 0;  // # of writebacks from Li or its VC(if enabled) to next level
     float hitTime = 0;
     float energy = 0;
     float area = 0;
     CacheStatistics* vc_statistics;
 
-    CacheStatistics() {vc_statistics = new CacheStatistics();}
+    // CacheStatistics() {vc_statistics = new CacheStatistics();}
 };
 
 /**
@@ -92,18 +92,20 @@ private:
      */
     void swapBlocks(int l1_set_num, int l1_idx, int vc_idx);
 
-
     void findCactiCacheStatistics();
+
 public:
-    Cache() {};
+    void printCacheSet(int set_num);
+    Cache();
 
     /*
      * @param n_vc_blocks number of victim cache blocks (If 0 => Victim Cache is disabled)
      */
-    Cache(int cache_size, int assoc, int block_size, int n_vc_blocks) {}
+    Cache(int cache_size, int assoc, int block_size, int n_vc_blocks);
 
-    int getSetNumber(uint64_t addr) {};
-    uint64_t getTag(uint64_t addr) {};
+    int getSetNumber(uint64_t addr);
+    uint64_t getTag(uint64_t addr);
+    uint64_t getBlockAddress(int set_num, uint64_t tag);
     
     /*  @brief Reads the block at given addr 
      *  @return 
@@ -157,6 +159,23 @@ public:
      * @return LRU/Invalid cache block that's evicted from the cache
      */
     CacheBlock evictAndReplaceBlock(CacheBlock incoming_cache_block, int set_num, int lru_idx);
+
+
+    // /*
+    //  * @brief Evicts the LRU/invalid block from the cache_set
+    //  * 
+    //  * @param set_num - cache_set number
+    //  * @param lru_idx   Index of block to evict. (If not known, give it as -1)
+    //  * @return CacheBlock that's evicted
+    //  */
+    // CacheBlock evictBlock(int set_num, int lru_idx);
+
+    // /*
+    //  * @brief Replace LRU/invalid block from the cache_set with the new block
+    //  * 
+    //  * @param lru_idx Index of block to replace with new cache_block. (If not known, give it as -1)
+    //  */
+    // void replaceBlock(CacheBlock incoming_cache_block, int set_num, int lru_idx);
 
     /*
      * @brief prints the cache_blocks within each cache_set in the order of their recency of access (i.e. lru block at the last)

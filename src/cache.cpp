@@ -3,6 +3,11 @@
 #include<cmath>
 #include<algorithm>
 
+void hexVal(uint64_t dec_val)
+{
+    cout << hex << dec_val;
+}
+
 /****************************
  ****** CACHE BLOCK ********
 ****************************/
@@ -59,6 +64,7 @@ Cache::Cache(int cache_size, int assoc, int block_size, int n_vc_blocks)
 
     cache = vector<vector<CacheBlock>> (n_sets, vector<CacheBlock>(assoc, CacheBlock()));
     findCactiCacheStatistics();
+    c_stats.vc_statistics = &(vc_cache->c_stats);
 }
 
 
@@ -71,6 +77,7 @@ Cache::Cache()
     isVCEnabled = false;
     n_vc_blocks = 0;
     vc_cache = nullptr; 
+    c_stats.vc_statistics = nullptr;
 }
 
 
@@ -87,22 +94,34 @@ pair<bool, int> Cache::lookupBlock(int set_num, uint64_t tag)
 
     for(int i = 0; i < assoc; i++)
     {
-        if(cache[set_num][i].tag == tag)
+        if(cache[set_num][i].valid_bit == true && cache[set_num][i].tag == tag)
         {
             hit_idx = i;
             break;
         }
         else if(invalid_idx == -1)
         {
+            // cout << cache[set_num][i].lru_counter << " " << max_lru_val << endl;
             if(cache[set_num][i].valid_bit == false)
             {
+                // cout << "nope" << endl;
                 invalid_idx = i;
             }
             else if(cache[set_num][i].lru_counter > max_lru_val)
             {
-                max_lru_val = cache[set_num][i].lru_counter;
-                max_lru_idx = i;
+                // cout << "bool : " << cache[set_num][i].lru_counter << " " << max_lru_val << " " << (cache[set_num][i].lru_counter > max_lru_val) << endl;
+                // if()
+                // {
+                     max_lru_val = cache[set_num][i].lru_counter;
+                    max_lru_idx = i;
+                    // cout << "true " << i << endl;
+                // }
+                // else
+                // {
+                //     cout << "false" <<  cache[set_num][i].lru_counter << " " << max_lru_val << endl;
+                // }
             }
+            
         }
     }
 
@@ -122,6 +141,8 @@ pair<bool, int> Cache::lookupBlock(int set_num, uint64_t tag)
         return_idx = max_lru_idx;
     }
 
+    cout << "Indices: " << dec << hit_idx << " " << invalid_idx << " " << max_lru_idx << endl;
+    cout << "Counters: " << cache[set_num][0].lru_counter << " " << cache[set_num][1].lru_counter << endl;
     return make_pair(isHit, return_idx);
 }
 
@@ -159,20 +180,63 @@ void Cache::incrementLRUCounters(int set_num)
 
 void Cache::swapBlocks(int l1_set_num, int l1_idx, int vc_idx)
 {
-    CacheBlock temp = cache[l1_set_num][l1_idx];
-    cache[l1_set_num][l1_idx] = vc_cache->cache[0][vc_idx];
-    vc_cache->cache[0][vc_idx] = temp;
+    CacheBlock l1_block = cache[l1_set_num][l1_idx];
+    CacheBlock vc_block = vc_cache->cache[0][vc_idx];
+
+    // cout << "L1-VC Swap " << l1_idx << " " << vc_idx << endl;
+
+    // While swapping, make sure that tags are changed (L1 <--> VC)
+    uint64_t vc_block_addr, l1_block_addr, new_vc_block_tag, new_l1_block_tag;
+
+    if(l1_block.valid_bit == true)
+    {
+        l1_block_addr = getBlockAddress(l1_set_num, l1_block.tag);
+        new_l1_block_tag = vc_cache->getTag(l1_block_addr);
+    }
+    
+    if(vc_block.valid_bit == true)
+    {
+        vc_block_addr = vc_cache->getBlockAddress(0, vc_block.tag);
+        new_vc_block_tag = getTag(vc_block_addr);
+    }
+
+    l1_block.tag = new_l1_block_tag;
+    l1_block.lru_counter = 0;
+    vc_block.tag = new_vc_block_tag;
+    vc_block.lru_counter = 0;
+
+    vc_cache->cache[0][vc_idx] = l1_block;
+    cache[l1_set_num][l1_idx] = vc_block;
+    // cout << "During Swap : " << vc_cache->cache[0][vc_idx].tag << endl; 
 }
 
 
 void Cache::findCactiCacheStatistics()
 {
     int cacti_result = get_cacti_results(cache_size, block_size, assoc, &c_stats.hitTime, &c_stats.energy, &c_stats.area);
-
+    
     if(cacti_result > 0)    // Cacti failed for this cache configuration
     {
+        cout << "CACTI FAILED" << cacti_result << endl;
         c_stats.hitTime = 0.2;
     }
+}
+
+
+void Cache::printCacheSet(int set_num)
+{
+    cout << "  set " << set_num << ":\t";
+
+        for(auto cb: cache[set_num])
+        {
+            hexVal(cb.tag);
+
+            if(cb.dirty_bit == true)
+                cout << " D\t";
+            else
+                cout << "  \t";
+        }
+    cout << endl;
 }
 
 
@@ -188,26 +252,36 @@ pair<bool, int> Cache::lookupRead(uint64_t addr)
 
     int set_num = getSetNumber(addr);
     uint64_t tag = getTag(addr);
+    cout << "Read: addr: ";
+    hexVal(addr);
+    cout << " set: " << set_num << "    tag: ";
+    hexVal(tag);
+    cout << endl;
+    
+    cout << "Before Read: " << endl; 
+    printCacheSet(set_num);
 
     pair<bool, int> lookupResult = lookupBlock(set_num, tag);
 
     if(lookupResult.first == true) // cache hit
     {
+        cout << "ReadHit\n" << endl;
         result.first = true;
         result.second = lookupResult.second;
     }
     else    // cache_miss
     {
+        cout << "ReadMiss\n" << endl;
         c_stats.n_read_misses++;
         result.first = false;
         result.second = lookupResult.second;
 
-        // Need not involve VC as this cache itself has empty space if lookupResult is invalid block
-        if(cache[set_num][lookupResult.second].valid_bit == true)   
+        if(isVCEnabled) 
         {
-            if(isVCEnabled) 
+            if(cache[set_num][result.second].valid_bit == true)
             {
                 // Sends a read request to VC
+                cout << "VC Cache Lookup" << endl;
                 auto vc_readResult = vc_cache->lookupRead(addr);
                 c_stats.n_swap_requests++;
 
@@ -231,15 +305,20 @@ pair<bool, int> Cache::lookupRead(uint64_t addr)
     }
 
     incrementLRUCounters(set_num);
-    cache[set_num][lookupResult.second].lru_counter = 0;    // read request makes it MRU block
 
     // Checking if block to be evicted is dirty to count write_backs
     if(result.first == false)   // finally if its a miss
     {
         if(cache[set_num][result.second].valid_bit == true && cache[set_num][result.second].dirty_bit == true)
         {
+            cout << "Writeback - set: " << hex << set_num <<  " " << "tag - " << tag << endl;
             c_stats.n_writebacks++; // write back to next level will be handled at simulator
         }
+        cache[set_num][lookupResult.second].lru_counter = assoc;
+    }
+    else
+    {
+        cache[set_num][lookupResult.second].lru_counter = 0;
     }
 
     return result;
@@ -256,22 +335,32 @@ pair<bool, int> Cache::lookupWrite(uint64_t addr)
 
     pair<bool, int> lookupResult = lookupBlock(set_num, tag);
 
+    cout << "Write: addr: ";
+    hexVal(addr);
+    cout << " set: " << set_num << "    tag: ";
+    hexVal(tag);
+    cout << endl;
+    
+    cout << "Before Write: " << dec << lookupResult.second << endl; 
+    printCacheSet(set_num);
+
 
     if(lookupResult.first == true) // cache hit
     {
+        cout << "Write Hit\n" << endl;
         result.first = true;
         result.second = lookupResult.second;
     }
     else    // cache-write miss
     {
+        cout << "Write Miss\n" << endl;
         c_stats.n_write_misses++;
         result.first = false;
         result.second = lookupResult.second;
 
-        // Need not involve VC as this cache itself has empty space if lookupResult is invalid block
-        if(cache[set_num][lookupResult.second].valid_bit == true)   
+        if(isVCEnabled) 
         {
-            if(isVCEnabled) 
+            if(cache[set_num][result.second].valid_bit == true)
             {
                 // Sends a read request to VC
                 auto vc_readResult = vc_cache->lookupRead(addr);
@@ -297,15 +386,20 @@ pair<bool, int> Cache::lookupWrite(uint64_t addr)
     }
 
     incrementLRUCounters(set_num);
-    cache[set_num][lookupResult.second].lru_counter = 0;    // write request makes it MRU block
 
     // Checking if block to be evicted is dirty to count write_backs
     if(result.first == false)   // finally if its a miss
     {
         if(cache[set_num][result.second].valid_bit == true && cache[set_num][result.second].dirty_bit == true)
         {
+            cout << "Writeback - set: " << hex << set_num <<  " " << "tag - " << tag << endl;
             c_stats.n_writebacks++; // write back to next level will be handled at simulator
         }
+        cache[set_num][lookupResult.second].lru_counter = assoc;
+    }
+    else
+    {
+        cache[set_num][lookupResult.second].lru_counter = 0;
     }
 
     return result;
@@ -315,17 +409,22 @@ pair<bool, int> Cache::lookupWrite(uint64_t addr)
 int Cache::getSetNumber(uint64_t addr)
 {
     uint64_t temp = addr >> n_blockOffsetBits; //block offset bits are removed
-    uint64_t mask = 1 << (n_indexBits -1);
+    uint64_t mask = (1 << (n_indexBits)) -1;
     return temp & mask;
 }
 
 
 uint64_t Cache::getTag(uint64_t addr)
 {
-    uint64_t mask = 64 - n_tagBits;
-    uint64_t temp_tag = addr & mask;
-    uint64_t tag = temp_tag >> (64 - n_tagBits);
+    uint64_t tag = addr >> (n_blockOffsetBits + n_indexBits); //block offset & index_bits bits are removed
     return tag;
+}
+
+
+uint64_t Cache::getBlockAddress(int set_num, uint64_t tag)
+{
+    uint64_t addr = tag << ((n_indexBits + n_blockOffsetBits)) |  (set_num << n_blockOffsetBits);
+    return addr;
 }
 
 
@@ -354,9 +453,33 @@ CacheBlock Cache::evictAndReplaceBlock(CacheBlock incoming_cache_block, int set_
     if(lru_idx == -1)   lru_idx = findLRUBlock(set_num);
 
     CacheBlock lruCacheBlock = cache[set_num][lru_idx];
+    // cout << "set " << set_num << " :e " << incoming_cache_block.tag << endl;
+    incoming_cache_block.lru_counter = 0;
     cache[set_num][lru_idx] = incoming_cache_block;
+    cout << "While replace: set " << set_num << " " << hex << incoming_cache_block.tag << " lru_idx: " << dec << lru_idx<< endl;
+    printCacheSet(set_num);
     return lruCacheBlock;
 }
+
+// CacheBlock Cache::evictBlock(int set_num, int lru_idx)
+// {
+//     // lru_idx will be invalid block idx if exists
+//     if(lru_idx == -1)   lru_idx = findLRUBlock(set_num);
+
+//     CacheBlock lruCacheBlock = cache[set_num][lru_idx];
+//     cache[set_num][lru_idx].valid_bit = false;
+//     return lruCacheBlock;
+// }
+
+
+// void Cache::replaceBlock(CacheBlock incoming_cache_block, int set_num, int lru_idx)
+// {
+//     // lru_idx will be invalid block idx if exists
+//     if(lru_idx == -1)   lru_idx = findLRUBlock(set_num);
+
+//     // incoming_cache_block.lru_counter = 0;
+//     cache[set_num][lru_idx] = incoming_cache_block;
+// }
 
 
 void Cache::printCacheContents()
@@ -396,13 +519,15 @@ void Cache::printCacheContents()
 
         for(auto cb: cache_blocks)
         {
-            cout << cb.tag << " ";
+            // cout << cb.tag << " ";
+            hexVal(cb.tag);
 
             if(cb.dirty_bit == true)
-                cout << "D\t";
+                cout << " D\t";
             else
-                cout << " \t";
+                cout << "  \t";
         }
+        cout << endl;
     }
 }
 
