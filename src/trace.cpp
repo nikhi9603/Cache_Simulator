@@ -32,7 +32,7 @@
 
 //             if(s1 == "r" || s1 == "w")
 //             {
-//                 uint64_t addr = std::stoull(s2, nullptr, 16);
+//                 long long int addr = std::stoull(s2, nullptr, 16);
 //                 TraceEntry newTraceEntry = TraceEntry(s1, addr);
 //                 trace_contents.push_back(newTraceEntry);
 //             }

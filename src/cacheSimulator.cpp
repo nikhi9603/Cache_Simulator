@@ -5,7 +5,8 @@
 // RAW STATISTICS
 void RawStatistics::printStats()
 {
-    cout << fixed << setprecision(4);
+    cout << endl;
+    cout << fixed << setprecision(4) << dec;
     cout << "===== Simulation results (raw) =====" << endl;
     cout << "  a. number of L1 reads:\t\t" << l1_reads << endl;
     cout << "  b. number of L1 read misses:\t\t" << l1_read_misses << endl;
@@ -29,7 +30,8 @@ void RawStatistics::printStats()
 // PERFORMANCE STATISTICS
 void PerformanceStatistics::printStats()
 {
-    cout << fixed << setprecision(4);
+    cout << endl;
+    cout << fixed << setprecision(4) << dec;
     cout << "===== Simulation results (performance) =====" << endl;
     cout << "  1. average access time:\t\t" << average_access_time << endl;
     cout << "  2. energy-delay product:\t\t" << energy_delay_product << endl;
@@ -43,7 +45,7 @@ void PerformanceStatistics::printStats()
  
 CacheSimulator::CacheSimulator(uint l1_size, uint l1_assoc, uint l1_blocksize,
                    uint n_vc_blocks,
-                   uint l2_size, uint l2_assoc)
+                   uint l2_size, uint l2_assoc, string trace_file_name)
 {
     this->l1_size = l1_size;
     this->l1_assoc = l1_assoc;
@@ -51,6 +53,7 @@ CacheSimulator::CacheSimulator(uint l1_size, uint l1_assoc, uint l1_blocksize,
     this->n_vc_blocks = n_vc_blocks;
     this->l2_size = l2_size;
     this->l2_assoc = l2_assoc;
+    this->trace_file_name = trace_file_name;
 
     l1_cache = Cache(l1_size, l1_assoc, l1_blocksize, n_vc_blocks);
     isVCEnabled = (n_vc_blocks > 0) ? true : false;
@@ -80,7 +83,7 @@ CacheSimulator::CacheSimulator(uint l1_size, uint l1_assoc, uint l1_blocksize,
 // }
 
 
-void CacheSimulator::sendReadRequest(uint64_t addr)
+void CacheSimulator::sendReadRequest(long long int addr)
 {
     /*
         Four configurations are investigated in this project:
@@ -100,7 +103,7 @@ void CacheSimulator::sendReadRequest(uint64_t addr)
     if(l1_read_result.first == true)    // L1 hit   (i.e L1+VC hit if VC is enabled)
     {
         // No need to pass down to further levels of memory
-        l1_cache.readData(l1_set_num, l1_read_result.second);
+        // l1_cache.readData(l1_set_num, l1_read_result.second.first);
     }
     else    // L1 miss
     {
@@ -112,28 +115,41 @@ void CacheSimulator::sendReadRequest(uint64_t addr)
             if(l2_read_result.first == true) // L2 hit
             {
                 // pass the value back to L1
-                CacheBlock l2_block = l2_cache.getBlock(l2_set_num, l2_read_result.second);
+                CacheBlock l2_block = l2_cache.getBlock(l2_set_num, l2_read_result.second.first);
                 l2_block.tag = l1_cache.getTag(l2_cache.getBlockAddress(l2_set_num, l2_block.tag));
+                // l2_cache.unsetDirty(l2_set_num, l2_read_result.second.first);
+                l2_block.dirty_bit = false;
 
-                CacheBlock evictedBlock = l1_cache.evictAndReplaceBlock(l2_block, l1_set_num, l1_read_result.second);
+                CacheBlock evictedBlock;
+                long long int evictedBlock_addr;
 
-                l1_cache.readData(l1_set_num, l1_read_result.second);
+                if(l1_read_result.second.first == -1)   // eviction done from vc of L1
+                {
+                    evictedBlock = l1_read_result.second.second;
+                    evictedBlock_addr = l1_cache.vc_cache->getBlockAddress(0, evictedBlock.tag);
+                    l1_cache.evictAndReplaceBlock(l2_block, l1_set_num, -1);
+                }
+                else
+                {
+                    evictedBlock = l1_cache.evictAndReplaceBlock(l2_block, l1_set_num, l1_read_result.second.first);
+                    evictedBlock_addr = l1_cache.getBlockAddress(l1_set_num, evictedBlock.tag);
+                }
+                
 
                 // if evictedBlock from L1 is dirty, need to write to L2
                 if(evictedBlock.valid_bit == true && evictedBlock.dirty_bit == true)
                 {
-                    uint64_t evictedBlock_addr = l1_cache.getBlockAddress(l1_set_num, evictedBlock.tag);
                     evictedBlock.tag = l2_cache.getTag(evictedBlock_addr);
                     auto l1_writeback_result = l2_cache.lookupWrite(evictedBlock_addr);
 
                     if(l1_writeback_result.first == true)
                     {
-                        l2_cache.writeData(l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second);
+                        l2_cache.writeData(l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second.first);
                     }
                     else
                     {
-                        CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(evictedBlock, l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second);
-                        l2_cache.writeData(l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second);
+                        CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(evictedBlock, l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second.first);
+                        l2_cache.writeData(l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second.first);
                         
                         // If L2 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
                         if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
@@ -145,36 +161,52 @@ void CacheSimulator::sendReadRequest(uint64_t addr)
                 CacheBlock l1_newBlock = CacheBlock(l1_cache.getTag(addr));
                 CacheBlock l2_newBlock = CacheBlock(l2_cache.getTag(addr));
                 
-                CacheBlock l1_evictedBlock = l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, l1_read_result.second);
-                l1_cache.readData(l1_set_num, l1_read_result.second);
+                CacheBlock l1_evictedBlock;
+                long long int l1_evictedBlock_addr;
+
+                if(l1_read_result.second.first == -1)   // eviction done from vc of L1
+                {
+                    l1_evictedBlock = l1_read_result.second.second;
+                    l1_evictedBlock_addr = l1_cache.vc_cache->getBlockAddress(0, l1_evictedBlock.tag);
+                    l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, -1);
+                }
+                else
+                {
+                    l1_evictedBlock = l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, l1_read_result.second.first);
+                    l1_evictedBlock_addr = l1_cache.getBlockAddress(l1_set_num, l1_evictedBlock.tag);
+                }
+                
 
                 if(l1_evictedBlock.valid_bit == true && l1_evictedBlock.dirty_bit == true)
                 {
-                    uint64_t l1_evictedBlock_addr = l1_cache.getBlockAddress(l1_set_num, l1_evictedBlock.tag);
                     l1_evictedBlock.tag = l2_cache.getTag(l1_evictedBlock_addr);
                     auto l1_writeback_result = l2_cache.lookupWrite(l1_evictedBlock_addr);
 
                     if(l1_writeback_result.first == true)
                     {
-                        l2_cache.writeData(l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second);
+                        l2_cache.writeData(l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second.first);
                         CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, -1);
                         // If L2 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
-                        if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
+                        // if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
                     }
                     else
                     {
-                        CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l1_evictedBlock, l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second);
-                        l2_cache.writeData(l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second);                        
-
+                        CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l1_evictedBlock, l2_cache.getSetNumber(l1_evictedBlock_addr), -1);
                         CacheBlock l2_second_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, -1);
-                        // If L2 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
-                        if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
-                        if(l2_second_evictedBlock.valid_bit == true && l2_second_evictedBlock.dirty_bit == true) cout << "L2 Writeback second" << endl;
+                          
+
+                        // CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l1_evictedBlock, l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second);
+                        // l2_cache.writeData(l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second);                        
+
+                        // CacheBlock l2_second_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, -1);
+                        // // If L2 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
+                        // if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
+                        // if(l2_second_evictedBlock.valid_bit == true && l2_second_evictedBlock.dirty_bit == true) cout << "L2 Writeback second" << endl;
                     }
                 }
                 else
                 {
-                    CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, l2_read_result.second);
+                    CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, l2_read_result.second.first);
                     if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
                 }
                 // If L2 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
@@ -183,11 +215,21 @@ void CacheSimulator::sendReadRequest(uint64_t addr)
         else    // L1 config or (L1+VC) config
         {
             CacheBlock l1_newBlock = CacheBlock(l1_cache.getTag(addr));
+
+            CacheBlock l1_evictedBlock;
+            if(l1_read_result.second.first == -1)
+            {
+                l1_evictedBlock = l1_read_result.second.second;
+                l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, -1);
+            }
+            else
+            {
+                l1_evictedBlock = l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, l1_read_result.second.first);
+            }
             // cout << "set " << l1_set_num << " :n1 " << l1_cache.getBlock(l1_set_num, l1_read_result.second).tag << " " << l1_cache.getBlock(l1_set_num, l1_read_result.second).valid_bit << endl;
-            CacheBlock l1_evictedBlock = l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, l1_read_result.second);
             // cout << "set " << l1_set_num << " :n2 " << l1_cache.getBlock(l1_set_num, l1_read_result.second).tag <<  " " << l1_cache.getBlock(l1_set_num, l1_read_result.second).valid_bit << endl;
             // cout << endl;
-            l1_cache.readData(l1_set_num, l1_read_result.second);
+            // l1_cache.readData(l1_set_num, l1_read_result.second.first);
             
             // If L1 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
         }
@@ -195,7 +237,7 @@ void CacheSimulator::sendReadRequest(uint64_t addr)
 }
 
 
-void CacheSimulator::sendWriteRequest(uint64_t addr)
+void CacheSimulator::sendWriteRequest(long long int addr)
 {
     /*
         Four configurations are investigated in this project:
@@ -215,7 +257,7 @@ void CacheSimulator::sendWriteRequest(uint64_t addr)
     if(l1_write_result.first == true)    // L1 hit   (i.e L1+VC hit if VC is enabled)
     {
         // No need to pass down to further levels of memory
-        l1_cache.writeData(l1_set_num, l1_write_result.second);
+        l1_cache.writeData(l1_set_num, l1_write_result.second.first);
     }
     else    // L1 miss
     {
@@ -227,28 +269,49 @@ void CacheSimulator::sendWriteRequest(uint64_t addr)
             if(l2_read_result.first == true) // L2 hit
             {
                 // pass the value back to L1
-                CacheBlock l2_block = l2_cache.getBlock(l2_set_num, l2_read_result.second);
-                uint64_t l2_block_addr = l2_cache.getBlockAddress(l2_set_num, l2_block.tag);
-                l2_block.tag = l1_cache.getTag(l2_block_addr);
+                CacheBlock l2_block = l2_cache.getBlock(l2_set_num, l2_read_result.second.first);
+                long long int l2_block_addr = l2_cache.getBlockAddress(l2_set_num, l2_block.tag);
+                cout << "L2->L1 : " << hex << l2_block.tag;
 
-                CacheBlock evictedBlock = l1_cache.evictAndReplaceBlock(l2_block, l1_set_num, l1_write_result.second);
-                l1_cache.writeData(l1_set_num, l1_write_result.second);
+                l2_block.tag = l1_cache.getTag(l2_block_addr);
+                cout << " | L2 addr: " << hex << l2_block_addr << " | L1 tag"  << hex << l2_block.tag << endl;
+
+                // l2_cache.unsetDirty(l2_set_num, l2_read_result.second.first);
+
+                CacheBlock evictedBlock;
+                long long int evictedBlock_addr;
+
+                if(l1_write_result.second.first == -1)   // eviction done from vc of L1
+                {
+                    evictedBlock = l1_write_result.second.second;
+                    evictedBlock_addr = l1_cache.vc_cache->getBlockAddress(0, evictedBlock.tag);
+                    
+                    cout << "VC->L2 : " << hex << evictedBlock.tag << " | VC addr: " << hex << evictedBlock_addr << " | L2 tag " << l2_cache.getTag(evictedBlock_addr) << endl;
+                    l2_block.dirty_bit = true;
+                    l1_cache.evictAndReplaceBlock(l2_block, l1_set_num, -1);
+                }
+                else
+                {
+                    evictedBlock = l1_cache.evictAndReplaceBlock(l2_block, l1_set_num, l1_write_result.second.first);
+                    evictedBlock_addr = l1_cache.getBlockAddress(l1_set_num, evictedBlock.tag);
+                    l1_cache.writeData(l1_set_num, l1_write_result.second.first);
+                }
+
 
                 // if evictedBlock from L1 is dirty, need to write to L2
                 if(evictedBlock.valid_bit == true && evictedBlock.dirty_bit == true)
                 {
-                    uint64_t evictedBlock_addr = l1_cache.getBlockAddress(l1_set_num, evictedBlock.tag);
                     auto l1_writeback_result = l2_cache.lookupWrite(evictedBlock_addr);
                     evictedBlock.tag = l2_cache.getTag(evictedBlock_addr);
 
                     if(l1_writeback_result.first == true)
                     {
-                        l2_cache.writeData(l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second);
+                        l2_cache.writeData(l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second.first);
                     }
                     else
                     {
-                        CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(evictedBlock, l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second);
-                        l2_cache.writeData(l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second);
+                        CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(evictedBlock, l2_cache.getSetNumber(evictedBlock_addr), -1);
+                        l2_cache.writeData(l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second.first);
                         
                         // If L2 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
                         if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
@@ -259,49 +322,83 @@ void CacheSimulator::sendWriteRequest(uint64_t addr)
             {
                 CacheBlock l1_newBlock = CacheBlock(l1_cache.getTag(addr));
                 CacheBlock l2_newBlock = CacheBlock(l2_cache.getTag(addr));
-                
-                CacheBlock l1_evictedBlock = l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, l1_write_result.second);
-                l1_cache.writeData(l1_set_num, l1_write_result.second);
 
+                CacheBlock l1_evictedBlock;
+                long long int l1_evictedBlock_addr;
+
+                if(l1_write_result.second.first == -1)   // eviction done from vc of L1
+                {
+                    l1_evictedBlock = l1_write_result.second.second;
+                    l1_evictedBlock_addr = l1_cache.vc_cache->getBlockAddress(0, l1_evictedBlock.tag);
+                    cout << "VC->L2 : " << hex << l1_evictedBlock.tag << " | VC addr: " << hex << l1_evictedBlock_addr << " | L2 tag " << l2_cache.getTag(l1_evictedBlock_addr) << endl;
+
+                    l1_newBlock.dirty_bit = true;
+                    l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, -1);
+                }
+                else
+                {
+                    l1_evictedBlock = l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, l1_write_result.second.first);
+                    l1_evictedBlock_addr = l1_cache.getBlockAddress(l1_set_num, l1_evictedBlock.tag);
+                    cout << "L1->L2 : " << hex << l1_evictedBlock.tag << " | L1 addr: " << hex << l1_evictedBlock_addr << " | L2 tag " << l2_cache.getTag(l1_evictedBlock_addr) << endl;
+
+                    l1_cache.writeData(l1_set_num, l1_write_result.second.first);
+                }
+                
                 if(l1_evictedBlock.valid_bit == true && l1_evictedBlock.dirty_bit == true)
                 {
-                    uint64_t l1_evictedBlock_addr = l1_cache.getBlockAddress(l1_set_num, l1_evictedBlock.tag);
+                    // long long int l1_evictedBlock_addr = l1_cache.getBlockAddress(l1_set_num, l1_evictedBlock.tag);
                     auto l1_writeback_result = l2_cache.lookupWrite(l1_evictedBlock_addr);
 
                     if(l1_writeback_result.first == true)
                     {
-                        l2_cache.writeData(l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second);
+                        // l2_cache.writeData(l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second);
+                        // CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, -1);
+                        // if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
+                        l2_cache.writeData(l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second.first);
                         CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, -1);
-                        if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
                     }
                     else
                     {
                         l1_evictedBlock.tag = l2_cache.getTag(l1_evictedBlock_addr);
-                        CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l1_evictedBlock, l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second);
-                        l2_cache.writeData(l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second);
+                        // CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l1_evictedBlock, l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second);
+                        // l2_cache.writeData(l2_cache.getSetNumber(l1_evictedBlock_addr), l1_writeback_result.second);
                         
+                        // CacheBlock l2_second_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, -1);
+                        // // If L2 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
+                        // if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
+                        // if(l2_second_evictedBlock.valid_bit == true && l2_second_evictedBlock.dirty_bit == true) cout << "L2 Writeback second" << endl;
+                        CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l1_evictedBlock, l2_cache.getSetNumber(l1_evictedBlock_addr), -1);
                         CacheBlock l2_second_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, -1);
-                        // If L2 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
-                        if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
-                        if(l2_second_evictedBlock.valid_bit == true && l2_second_evictedBlock.dirty_bit == true) cout << "L2 Writeback second" << endl;
                     }
                 }
                 else
                 {
-                    CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, l2_read_result.second);
-                        if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
+                    CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, l2_read_result.second.first);
+                    if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
                 }
             }
         }
         else    // L1 config or (L1+VC) config
         {
             CacheBlock l1_newBlock = CacheBlock(l1_cache.getTag(addr));
-            CacheBlock l1_evictedBlock = l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, l1_write_result.second);
-            l1_cache.writeData(l1_set_num, l1_write_result.second);
+
+            CacheBlock l1_evictedBlock;
+            if(l1_write_result.second.first == -1)
+            {
+                l1_evictedBlock = l1_write_result.second.second;
+                l1_newBlock.dirty_bit = true;
+                l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, -1);
+            }
+            else
+            {
+                l1_evictedBlock = l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, l1_write_result.second.first);
+                l1_cache.writeData(l1_set_num, l1_write_result.second.first);
+            }
+
             
-            cout << "After replace: " << dec << l1_write_result.second << endl;
-            l1_cache.printCacheSet(l1_set_num);
-            cout << "\n" << endl;
+            // cout << "After replace: " << dec << l1_write_result.second << endl;
+            // l1_cache.printCacheSet(l1_set_num);
+            // cout << "\n" << endl;
             // If L1 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
         }
     }
@@ -374,9 +471,9 @@ float CacheSimulator::findAAT()
     float block_transfer_time = (float)l1_blocksize / 16;
     float miss_penalty = main_memory_access_latency + block_transfer_time;
 
-    cout << l1_cache_stats.hitTime << " " << l2_cache_stats.hitTime << " " << vc_cache_stats.hitTime << endl;
-    cout << l1_cache_stats.energy << " " << l2_cache_stats.energy << " " << vc_cache_stats.energy << endl;
-    cout << l1_cache_stats.area << " " << l2_cache_stats.area << " " << vc_cache_stats.area << endl;
+    // cout << l1_cache_stats.hitTime << " " << l2_cache_stats.hitTime << " " << vc_cache_stats.hitTime << endl;
+    // cout << l1_cache_stats.energy << " " << l2_cache_stats.energy << " " << vc_cache_stats.energy << endl;
+    // cout << l1_cache_stats.area << " " << l2_cache_stats.area << " " << vc_cache_stats.area << endl;
 
     // Only L1 
     if(isVCEnabled == false && isL2Exist == false)
@@ -466,7 +563,40 @@ float CacheSimulator::findEDP()
     
     // total_energy = total_energy / pow(10,9);
     // total_access_time = total_access_time / pow(10, 9);
-    cout << "total  energy " << total_energy << endl;
-    edp = total_energy * simulation_stats.perf_stats.average_access_time;
+    // cout << "total  energy " << total_energy << endl;
+    edp = total_energy * simulation_stats.perf_stats.average_access_time * (raw_stats.l1_reads + raw_stats.l1_writes);
     return edp;
+}
+
+void CacheSimulator::printCacheContents()
+{
+    cout << endl;
+    cout << "===== L1 contents =====" << endl;
+    l1_cache.printCacheContents();
+
+    if(isVCEnabled)
+    {
+        cout << endl;
+        cout << "===== VC contents =====" << endl;
+        l1_cache.vc_cache->printCacheContents();
+    }
+
+    if(isL2Exist)
+    {
+        cout << endl;
+        cout << "===== L2 contents =====" << endl;
+        l2_cache.printCacheContents();
+    }
+}
+
+void CacheSimulator::printSimulatorConfiguration()
+{
+    cout << "===== Simulator configuration =====" << endl;
+    cout << "L1_SIZE:\t" << l1_size << endl;
+    cout << "L1_ASSOC:\t" << l1_assoc << endl;
+    cout << "L1_BLOCKSIZE:\t" << l1_blocksize << endl;
+    cout << "VC_NUM_BLOCKS:\t" << n_vc_blocks << endl;
+    cout << "L2_SIZE:\t" << l2_size << endl;
+    cout << "L2_ASSOC:\t" << l2_assoc << endl;
+    cout << "trace_file:\t" << trace_file_name << endl;
 }

@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
         l2_assoc = atoi(argv[6]);
         traceFileName = argv[7];
 
-        CacheSimulator cache_sim = CacheSimulator(l1_size, l1_assoc, l1_blocksize, n_vc_blocks, l2_size, l2_assoc);
+        CacheSimulator cache_sim = CacheSimulator(l1_size, l1_assoc, l1_blocksize, n_vc_blocks, l2_size, l2_assoc, traceFileName);
 
         string traceFilePath = TRACE_DIR_PATH + traceFileName;
         ifstream traceFile(traceFilePath);
@@ -46,13 +46,13 @@ int main(int argc, char* argv[])
 
                 if(s1 == "r")
                 {
-                    uint64_t addr = std::stoull(s2, nullptr, 16);
+                    long long int addr = std::stoll(s2, nullptr, 16);
                     // cout << "r " << hex << addr << endl;
                     cache_sim.sendReadRequest(addr);
                 }
                 else if(s1 == "w")
                 {
-                    uint64_t addr = std::stoull(s2, nullptr, 16);
+                    long long int addr = std::stoll(s2, nullptr, 16);
                     cache_sim.sendWriteRequest(addr);
                 }
                 else
@@ -68,10 +68,12 @@ int main(int argc, char* argv[])
         }
 
         SimulationStatistics cache_sim_stats = cache_sim.getSimulationStats();
-        cout << dec << endl;
-        cache_sim_stats.printStats();
-        cout << endl;
+
+        cache_sim.printSimulatorConfiguration();
         cache_sim.printCacheContents();
+        
+        SimulationStatistics sim_stats = cache_sim.getSimulationStats();
+        sim_stats.printStats();
     }
     return 0;
 }

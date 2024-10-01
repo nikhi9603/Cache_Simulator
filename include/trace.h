@@ -10,9 +10,9 @@
 // struct TraceEntry
 // {
 //     string operation;
-//     uint64_t addr;
+//     long long int addr;
 
-//     TraceEntry(string op, uint64_t addr) {operation = op; this->addr = addr;}
+//     TraceEntry(string op, long long int addr) {operation = op; this->addr = addr;}
 // };
 
 

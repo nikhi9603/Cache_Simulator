@@ -8,13 +8,13 @@ using namespace std;
 class CacheBlock
 {
 public:
-    uint64_t tag;
+    uint32_t tag;
     bool valid_bit;
     bool dirty_bit;
     int lru_counter;
 
     CacheBlock();
-    CacheBlock(uint64_t tag);
+    CacheBlock(long long int tag);
 };
 
 struct CacheStatistics
@@ -50,9 +50,7 @@ private:
 
     uint n_tagBits;
     uint n_indexBits;
-    uint n_blockOffsetBits;
-
-    Cache* vc_cache; 
+    uint n_blockOffsetBits; 
     vector<vector<CacheBlock>> cache;
 
     CacheStatistics c_stats;
@@ -64,7 +62,7 @@ private:
      * @return 
      *   - When returned bool=false(lookup - miss), int=index of `invalid block` if exists, else `lru block` index
      */
-    pair<bool, int> lookupBlock(int set_num, uint64_t tag);      
+    pair<bool, int> lookupBlock(int set_num, long long int tag);      
 
     /*
      * @brief Finds LRU Block or Invalid block in the cache_set
@@ -81,7 +79,7 @@ private:
      * 
      * @param set_num set number of cache_set 
      */
-    void incrementLRUCounters(int set_num);
+    void incrementLRUCounters(int set_num, int idx);
 
     /*
      * @brief Swapping blocks between L1 and its victim cache(VC)
@@ -95,6 +93,7 @@ private:
     void findCactiCacheStatistics();
 
 public:
+    Cache* vc_cache;
     void printCacheSet(int set_num);
     Cache();
 
@@ -103,9 +102,9 @@ public:
      */
     Cache(int cache_size, int assoc, int block_size, int n_vc_blocks);
 
-    int getSetNumber(uint64_t addr);
-    uint64_t getTag(uint64_t addr);
-    uint64_t getBlockAddress(int set_num, uint64_t tag);
+    int getSetNumber(long long int addr);
+    long long int getTag(long long int addr);
+    long long int getBlockAddress(int set_num, long long int tag);
     
     /*  @brief Reads the block at given addr 
      *  @return 
@@ -117,7 +116,7 @@ public:
      *    
      *  int = index of cache block found in corresponding cache set
     */
-    pair<bool, int> lookupRead(uint64_t addr);
+    pair<bool, pair<int, CacheBlock>> lookupRead(long long int addr);
 
     /* 
      *  @brief Writes data to the block at given addr
@@ -130,14 +129,14 @@ public:
      * 
      *  int = index of cache block found in corresponding cache set
     */
-    pair<bool, int> lookupWrite(uint64_t addr);
+    pair<bool, pair<int, CacheBlock>> lookupWrite(long long int addr);
 
     // NOTE: lookupRead and lookupWrite are actually doing the same as they are not really reading/write in this function
     // Considered into two for now so that no of read misses etc.. can be counted seperately
 
-    void readData(int set_num, int idx);
+    // void readData(int set_num, int idx);
 
-    /**
+    /*
      * @brief since its simulation, data is not taken as arg to write
      */
     void writeData(int set_num, int idx);
@@ -186,6 +185,8 @@ public:
      * @brief Returns Cache Simulation Statistics
      */
     CacheStatistics getCacheStatistics() {return c_stats;}
+
+    void unsetDirty(int set_num, int idx);
 };
 
 #endif

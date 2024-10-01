@@ -59,6 +59,7 @@ private:
     bool isL2Exist;
     uint l1_size, l1_assoc, l1_blocksize, n_vc_blocks, l2_size, l2_assoc;
     SimulationStatistics simulation_stats;
+    string trace_file_name;
 
     // void sendRequests(vector<TraceEntry> trace_contents);
 
@@ -70,19 +71,21 @@ private:
 public:
     CacheSimulator(uint l1_size, uint l1_assoc, uint l1_blocksize,
                    uint n_vc_blocks,
-                   uint l2_size, uint l2_assoc);
+                   uint l2_size, uint l2_assoc, string trace_file_name);
 
     /*
      * @return Simulation statistics
      */
     SimulationStatistics getSimulationStats();
 
-    void sendReadRequest(uint64_t addr);
-    void sendWriteRequest(uint64_t addr);
+    void sendReadRequest(long long int addr);
+    void sendWriteRequest(long long int addr);
 
     void printSimulationStats() { simulation_stats.printStats(); }
 
-    void printCacheContents() {l1_cache.printCacheContents();}
+    void printCacheContents();
+
+    void printSimulatorConfiguration();
 };
 
 #endif
