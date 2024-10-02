@@ -153,13 +153,13 @@ pair<bool, int> Cache::lookupBlock(int set_num, long long int tag)
         return_idx = max_lru_idx;
     }
 
-    std::cout << "Indices: " << dec << hit_idx << " " << invalid_idx << " " << max_lru_idx << endl;
-    std::cout << "Counters: ";
-    for(int i = 0; i < assoc; i++)
-    {
-        std::cout << cache[set_num][i].lru_counter << " ";
-    }
-    std::cout << endl;
+    // std::cout << "Indices: " << dec << hit_idx << " " << invalid_idx << " " << max_lru_idx << endl;
+    // std::cout << "Counters: ";
+    // for(int i = 0; i < assoc; i++)
+    // {
+    //     std::cout << cache[set_num][i].lru_counter << " ";
+    // }
+    // std::cout << endl;
     return make_pair(isHit, return_idx);
 }
 
@@ -236,7 +236,7 @@ void Cache::findCactiCacheStatistics()
     
     if(cacti_result > 0)    // Cacti failed for this cache configuration
     {
-        std::cout << "CACTI FAILED" << cacti_result << endl;
+        // std::cout << "CACTI FAILED" << cacti_result << endl;
         c_stats.hitTime = 0.2;
     }
 }
@@ -270,28 +270,28 @@ pair<bool, pair<int, CacheBlock>> Cache::lookupRead(long long int addr)
 
     int set_num = getSetNumber(addr);
     long long int tag = getTag(addr);
-    std::cout << "Read: addr: ";
-    cout << hex << addr ;
-    std::cout << " set: " << set_num << "    tag: ";
-    cout << hex << tag ;
-    std::cout << endl;
+    // std::cout << "Read: addr: ";
+    // cout << hex << addr ;
+    // std::cout << " set: " << set_num << "    tag: ";
+    // cout << hex << tag ;
+    // std::cout << endl;
     
-    std::cout << "Before Read: " << endl; 
-    printCacheSet(set_num);
+    // std::cout << "Before Read: " << endl; 
+    // printCacheSet(set_num);
 
     pair<bool, int> lookupResult = lookupBlock(set_num, tag);
     int lru_counter = cache[set_num][lookupResult.second].lru_counter;
 
     if(lookupResult.first == true) // cache hit
     {
-        std::cout << "ReadHit\n" << endl;
+        // std::cout << "ReadHit\n" << endl;
         result.first = true;
         result.second.first = lookupResult.second;
         result.second.second = cache[set_num][lookupResult.second];
     }
     else    // cache_miss
     {
-        std::cout << "ReadMiss\n" << endl;
+        // std::cout << "ReadMiss\n" << endl;
         c_stats.n_read_misses++;
         result.first = false;
         result.second.first = lookupResult.second;
@@ -302,7 +302,7 @@ pair<bool, pair<int, CacheBlock>> Cache::lookupRead(long long int addr)
             if(cache[set_num][result.second.first].valid_bit == true)
             {
                 // Sends a read request to VC
-                std::cout << "VC Cache Lookup" << endl;
+                // std::cout << "VC Cache Lookup" << endl;
                 auto vc_readResult = vc_cache->lookupRead(addr);
                 c_stats.n_swap_requests++;
 
@@ -368,28 +368,28 @@ pair<bool, pair<int, CacheBlock>> Cache::lookupWrite(long long int addr)
 
     pair<bool, int> lookupResult = lookupBlock(set_num, tag);
     int lru_counter = cache[set_num][lookupResult.second].lru_counter;
-    std::cout << "LookupResukt lru idx: " << lookupResult.second << " , counter : " << lru_counter << endl;
+    // std::cout << "LookupResukt lru idx: " << lookupResult.second << " , counter : " << lru_counter << endl;
 
-    std::cout << "Write: addr: ";
-    cout << hex << addr ;
-    std::cout << " set: " << hex << set_num << "    tag: ";
-    cout << hex << tag;
-    std::cout << endl;
+    // std::cout << "Write: addr: ";
+    // cout << hex << addr ;
+    // std::cout << " set: " << hex << set_num << "    tag: ";
+    // cout << hex << tag;
+    // std::cout << endl;
     
-    std::cout << "Before Write: " << dec << lookupResult.second << endl; 
-    printCacheSet(set_num);
+    // std::cout << "Before Write: " << dec << lookupResult.second << endl; 
+    // printCacheSet(set_num);
 
 
     if(lookupResult.first == true) // cache hit
     {
-        std::cout << "Write Hit\n" << endl;
+        // std::cout << "Write Hit\n" << endl;
         result.first = true;
         result.second.first = lookupResult.second;
         result.second.second = cache[set_num][lookupResult.second];
     }
     else    // cache-write miss
     {
-        std::cout << "Write Miss\n" << endl;
+        // std::cout << "Write Miss\n" << endl;
         c_stats.n_write_misses++;
         result.first = false;
         result.second.first = lookupResult.second;
@@ -463,12 +463,12 @@ pair<bool, pair<int, CacheBlock>> Cache::lookupWrite(long long int addr)
         incrementLRUCounters(set_num, lookupResult.second);
         cache[set_num][lookupResult.second].lru_counter = 0;
 
-        std::cout << "After increment counters - " << cache[set_num][lookupResult.second].lru_counter << " : ";
-        for(int i = 0; i < assoc; i++)
-        {
-            std::cout << cache[set_num][i].lru_counter << " ";
-        }
-        std::cout << endl;
+        // std::cout << "After increment counters - " << cache[set_num][lookupResult.second].lru_counter << " : ";
+        // for(int i = 0; i < assoc; i++)
+        // {
+        //     std::cout << cache[set_num][i].lru_counter << " ";
+        // }
+        // std::cout << endl;
     }
 
     return result;
@@ -532,14 +532,14 @@ CacheBlock Cache::evictAndReplaceBlock(CacheBlock incoming_cache_block, int set_
     // std::cout << "set " << set_num << " :e " << incoming_cache_block.tag << endl;
     incoming_cache_block.lru_counter = 0;
     cache[set_num][lru_idx] = incoming_cache_block;
-    std::cout << "While replace: set " << hex << set_num << " " << hex << incoming_cache_block.tag << " lru_idx: " << dec << lru_idx<< endl;
-    printCacheSet(set_num);
-    std::cout << "While replace counters:";
-    for(int i = 0; i < assoc; i++)
-    {
-        std::cout << cache[set_num][i].lru_counter << " ";
-    }
-    std::cout << endl;
+    // std::cout << "While replace: set " << hex << set_num << " " << hex << incoming_cache_block.tag << " lru_idx: " << dec << lru_idx<< endl;
+    // printCacheSet(set_num);
+    // std::cout << "While replace counters:";
+    // for(int i = 0; i < assoc; i++)
+    // {
+    //     std::cout << cache[set_num][i].lru_counter << " ";
+    // }
+    // std::cout << endl;
     return lruCacheBlock;
 }
 

@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
 {
     uint l1_size, l1_assoc, l1_blocksize, n_vc_blocks, l2_size, l2_assoc;
     string traceFileName;
-    cout << argc << endl;
+    // cout << argc << endl;
 
     if(argc == 8)
     {
@@ -74,6 +74,15 @@ int main(int argc, char* argv[])
         
         SimulationStatistics sim_stats = cache_sim.getSimulationStats();
         sim_stats.printStats();
+        // cout << "\nL1 Miss rate " << sim_stats.raw_stats.l1_vc_miss_rate << endl;
+        // cout << "\nAAT " << sim_stats.perf_stats.average_access_time << endl;
+        // cout << "EDP " << sim_stats.perf_stats.energy_delay_product << endl;
+        // cout << "area " << sim_stats.perf_stats.area_metric << endl;
+        // cout << endl;
+    }
+    else
+    {
+        cout << "Invalid arguments" << endl;
     }
     return 0;
 }

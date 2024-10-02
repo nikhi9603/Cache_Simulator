@@ -94,7 +94,7 @@ void CacheSimulator::sendReadRequest(long long int addr)
 
         Cache::lookupRead function considers (L1+VC) configuration results combinedly
     */
-    cout << "Cache Read: " << hex << addr << dec << endl;
+    // cout << "Cache Read: " << hex << addr << dec << endl;
     auto l1_read_result = l1_cache.lookupRead(addr);
     int l1_set_num = l1_cache.getSetNumber(addr);
 
@@ -152,7 +152,7 @@ void CacheSimulator::sendReadRequest(long long int addr)
                         l2_cache.writeData(l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second.first);
                         
                         // If L2 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
-                        if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
+                        // if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
                     }
                 }
             }
@@ -207,7 +207,7 @@ void CacheSimulator::sendReadRequest(long long int addr)
                 else
                 {
                     CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, l2_read_result.second.first);
-                    if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
+                    // if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
                 }
                 // If L2 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
             }
@@ -248,7 +248,7 @@ void CacheSimulator::sendWriteRequest(long long int addr)
 
         Cache::lookupWrite function considers (L1+VC) configuration results combinedly
     */
-    cout << "Cache Write: " << hex << addr << dec << endl;
+    // cout << "Cache Write: " << hex << addr << dec << endl;
     auto l1_write_result = l1_cache.lookupWrite(addr);
     int l1_set_num = l1_cache.getSetNumber(addr);
 
@@ -271,10 +271,10 @@ void CacheSimulator::sendWriteRequest(long long int addr)
                 // pass the value back to L1
                 CacheBlock l2_block = l2_cache.getBlock(l2_set_num, l2_read_result.second.first);
                 long long int l2_block_addr = l2_cache.getBlockAddress(l2_set_num, l2_block.tag);
-                cout << "L2->L1 : " << hex << l2_block.tag;
+                // cout << "L2->L1 : " << hex << l2_block.tag;
 
                 l2_block.tag = l1_cache.getTag(l2_block_addr);
-                cout << " | L2 addr: " << hex << l2_block_addr << " | L1 tag"  << hex << l2_block.tag << endl;
+                // cout << " | L2 addr: " << hex << l2_block_addr << " | L1 tag"  << hex << l2_block.tag << endl;
 
                 // l2_cache.unsetDirty(l2_set_num, l2_read_result.second.first);
 
@@ -286,7 +286,7 @@ void CacheSimulator::sendWriteRequest(long long int addr)
                     evictedBlock = l1_write_result.second.second;
                     evictedBlock_addr = l1_cache.vc_cache->getBlockAddress(0, evictedBlock.tag);
                     
-                    cout << "VC->L2 : " << hex << evictedBlock.tag << " | VC addr: " << hex << evictedBlock_addr << " | L2 tag " << l2_cache.getTag(evictedBlock_addr) << endl;
+                    // cout << "VC->L2 : " << hex << evictedBlock.tag << " | VC addr: " << hex << evictedBlock_addr << " | L2 tag " << l2_cache.getTag(evictedBlock_addr) << endl;
                     l2_block.dirty_bit = true;
                     l1_cache.evictAndReplaceBlock(l2_block, l1_set_num, -1);
                 }
@@ -314,7 +314,7 @@ void CacheSimulator::sendWriteRequest(long long int addr)
                         l2_cache.writeData(l2_cache.getSetNumber(evictedBlock_addr), l1_writeback_result.second.first);
                         
                         // If L2 eviction is also dirty then write to memory, as of now for simulation, we are not doing anything
-                        if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
+                        // if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
                     }
                 }
             }
@@ -330,7 +330,7 @@ void CacheSimulator::sendWriteRequest(long long int addr)
                 {
                     l1_evictedBlock = l1_write_result.second.second;
                     l1_evictedBlock_addr = l1_cache.vc_cache->getBlockAddress(0, l1_evictedBlock.tag);
-                    cout << "VC->L2 : " << hex << l1_evictedBlock.tag << " | VC addr: " << hex << l1_evictedBlock_addr << " | L2 tag " << l2_cache.getTag(l1_evictedBlock_addr) << endl;
+                    // cout << "VC->L2 : " << hex << l1_evictedBlock.tag << " | VC addr: " << hex << l1_evictedBlock_addr << " | L2 tag " << l2_cache.getTag(l1_evictedBlock_addr) << endl;
 
                     l1_newBlock.dirty_bit = true;
                     l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, -1);
@@ -339,7 +339,7 @@ void CacheSimulator::sendWriteRequest(long long int addr)
                 {
                     l1_evictedBlock = l1_cache.evictAndReplaceBlock(l1_newBlock, l1_set_num, l1_write_result.second.first);
                     l1_evictedBlock_addr = l1_cache.getBlockAddress(l1_set_num, l1_evictedBlock.tag);
-                    cout << "L1->L2 : " << hex << l1_evictedBlock.tag << " | L1 addr: " << hex << l1_evictedBlock_addr << " | L2 tag " << l2_cache.getTag(l1_evictedBlock_addr) << endl;
+                    // cout << "L1->L2 : " << hex << l1_evictedBlock.tag << " | L1 addr: " << hex << l1_evictedBlock_addr << " | L2 tag " << l2_cache.getTag(l1_evictedBlock_addr) << endl;
 
                     l1_cache.writeData(l1_set_num, l1_write_result.second.first);
                 }
@@ -374,7 +374,7 @@ void CacheSimulator::sendWriteRequest(long long int addr)
                 else
                 {
                     CacheBlock l2_evictedBlock = l2_cache.evictAndReplaceBlock(l2_newBlock, l2_set_num, l2_read_result.second.first);
-                    if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
+                    // if(l2_evictedBlock.valid_bit == true && l2_evictedBlock.dirty_bit == true) cout << "L2 Writeback" << endl;
                 }
             }
         }
@@ -417,10 +417,10 @@ RawStatistics CacheSimulator::findRawStatistics()
     raw_stats.l1_write_misses = l1_stats.n_write_misses;
 
     raw_stats.n_swap_requests = l1_stats.n_swap_requests;
-    raw_stats.swap_request_rate = (float)raw_stats.n_swap_requests/(raw_stats.l1_reads + raw_stats.l1_writes);
+    raw_stats.swap_request_rate = (double)raw_stats.n_swap_requests/(raw_stats.l1_reads + raw_stats.l1_writes);
     raw_stats.n_swaps = l1_stats.n_swaps;
 
-    raw_stats.l1_vc_miss_rate = (float)(raw_stats.l1_read_misses + raw_stats.l1_write_misses - raw_stats.n_swaps)/ (raw_stats.l1_reads + raw_stats.l1_writes);
+    raw_stats.l1_vc_miss_rate = (double)(raw_stats.l1_read_misses + raw_stats.l1_write_misses - raw_stats.n_swaps)/ (raw_stats.l1_reads + raw_stats.l1_writes);
     raw_stats.l1_writebacks = l1_stats.n_writebacks;
 
     raw_stats.l2_reads = l2_stats.n_reads;
@@ -431,7 +431,7 @@ RawStatistics CacheSimulator::findRawStatistics()
 
     if(isL2Exist)
     {
-        raw_stats.l2_miss_rate =  (float)raw_stats.l2_read_misses / raw_stats.l2_reads;
+        raw_stats.l2_miss_rate =  (double)raw_stats.l2_read_misses / raw_stats.l2_reads;
         raw_stats.total_memory_traffic = raw_stats.l2_read_misses + raw_stats.l2_write_misses + raw_stats.l2_writebacks;
     }
     else
@@ -459,17 +459,17 @@ SimulationStatistics CacheSimulator::getSimulationStats()
     return simulation_stats;
 }
 
-float CacheSimulator::findAAT()
+double CacheSimulator::findAAT()
 {
-    float aat = 0;
+    double aat = 0;
     CacheStatistics l1_cache_stats = l1_cache.getCacheStatistics();
     CacheStatistics l2_cache_stats = l2_cache.getCacheStatistics();
     CacheStatistics vc_cache_stats; 
     if(isVCEnabled) vc_cache_stats = *l1_cache.getCacheStatistics().vc_statistics;
 
-    float main_memory_access_latency = 20;
-    float block_transfer_time = (float)l1_blocksize / 16;
-    float miss_penalty = main_memory_access_latency + block_transfer_time;
+    double main_memory_access_latency = 20;
+    double block_transfer_time = (double)l1_blocksize / 16;
+    double miss_penalty = main_memory_access_latency + block_transfer_time;
 
     // cout << l1_cache_stats.hitTime << " " << l2_cache_stats.hitTime << " " << vc_cache_stats.hitTime << endl;
     // cout << l1_cache_stats.energy << " " << l2_cache_stats.energy << " " << vc_cache_stats.energy << endl;
@@ -503,9 +503,9 @@ float CacheSimulator::findAAT()
 }
 
 
-float CacheSimulator::findArea()
+double CacheSimulator::findArea()
 {
-    float area = 0;
+    double area = 0;
     area += l1_cache.getCacheStatistics().area;
     if(isL2Exist) area += l2_cache.getCacheStatistics().area;
     if(isVCEnabled) area += l1_cache.getCacheStatistics().vc_statistics->area;
@@ -513,14 +513,14 @@ float CacheSimulator::findArea()
 }
 
 
-float CacheSimulator::findEDP()
+double CacheSimulator::findEDP()
 {
-    float edp = 0;
-    float total_energy = 0;
-    float total_access_time = 0;
+    double edp = 0;
+    double total_energy = 0;
+    double total_access_time = 0;
 
-    float main_memory_access_energy = 0.05;
-    float main_memory_access_latency = 20;
+    double main_memory_access_energy = 0.05;
+    double main_memory_access_latency = 20;
 
     CacheStatistics l1_cache_stats = l1_cache.getCacheStatistics();
     CacheStatistics l2_cache_stats = l2_cache.getCacheStatistics();
@@ -531,13 +531,13 @@ float CacheSimulator::findEDP()
     total_energy += (raw_stats.l1_reads + raw_stats.l1_writes) * l1_cache_stats.energy;
     total_energy += (raw_stats.l1_read_misses + raw_stats.l1_write_misses) * l1_cache_stats.energy;
 
-    total_access_time += (raw_stats.l1_reads + raw_stats.l1_writes) * l1_cache_stats.hitTime;
-    total_access_time += (raw_stats.l1_read_misses + raw_stats.l1_write_misses) * l1_cache_stats.hitTime;
+    // total_access_time += (raw_stats.l1_reads + raw_stats.l1_writes) * l1_cache_stats.hitTime;
+    // total_access_time += (raw_stats.l1_read_misses + raw_stats.l1_write_misses) * l1_cache_stats.hitTime;
 
     if(isVCEnabled) 
     {
         total_energy += (2 * raw_stats.n_swap_requests) * vc_cache_stats.energy;
-        total_access_time += (2 * raw_stats.n_swap_requests) * vc_cache_stats.hitTime;
+        // total_access_time += (2 * raw_stats.n_swap_requests) * vc_cache_stats.hitTime;
     }
 
     if(isL2Exist)
@@ -547,18 +547,18 @@ float CacheSimulator::findEDP()
         total_energy += (raw_stats.l2_read_misses + raw_stats.l2_write_misses) * main_memory_access_energy;
         total_energy += raw_stats.l2_writebacks * main_memory_access_energy;
 
-        total_access_time += (raw_stats.l2_reads + raw_stats.l2_writes) * l2_cache_stats.hitTime;
-        total_access_time += (raw_stats.l2_read_misses + raw_stats.l2_write_misses) * l2_cache_stats.hitTime;
-        total_access_time += (raw_stats.l2_read_misses + raw_stats.l2_write_misses) * main_memory_access_latency;
-        total_access_time += raw_stats.l2_writebacks * main_memory_access_latency;
+        // total_access_time += (raw_stats.l2_reads + raw_stats.l2_writes) * l2_cache_stats.hitTime;
+        // total_access_time += (raw_stats.l2_read_misses + raw_stats.l2_write_misses) * l2_cache_stats.hitTime;
+        // total_access_time += (raw_stats.l2_read_misses + raw_stats.l2_write_misses) * main_memory_access_latency;
+        // total_access_time += raw_stats.l2_writebacks * main_memory_access_latency;
     }
     else
     {
         total_energy += (raw_stats.l1_read_misses + raw_stats.l1_write_misses - raw_stats.n_swaps) * main_memory_access_energy;
         total_energy += raw_stats.l1_writebacks * main_memory_access_energy;
 
-        total_access_time += (raw_stats.l1_read_misses + raw_stats.l1_write_misses - raw_stats.n_swaps) * main_memory_access_latency;
-        total_access_time += raw_stats.l1_writebacks * main_memory_access_latency;
+        // total_access_time += (raw_stats.l1_read_misses + raw_stats.l1_write_misses - raw_stats.n_swaps) * main_memory_access_latency;
+        // total_access_time += raw_stats.l1_writebacks * main_memory_access_latency;
     }
     
     // total_energy = total_energy / pow(10,9);
